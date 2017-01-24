@@ -1,0 +1,16 @@
+coffeescript docs:
+	https://arcturo.github.io/library/coffeescript/index.html
+Basic hubot scripting docs:
+	https://hubot.github.com/docs/scripting/
+Hubot script to allow dynamic reloading while developing:
+	https://github.com/vinta/hubot-reload-scripts
+
+Discuss:
+	* persistence: robot.brain, BUT... hubot-redis-brain OR lightweight key-val via http of our own for long-term persistence?
+	* steam API key.. just use mine, or get one for server?
+	* make sure hubot adapter set to handle DMs
+	
+Todo:
+	* build out primary use case
+	* shore up structure of package
+	* generate tests post-facto (lolololol)

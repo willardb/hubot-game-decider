@@ -1,0 +1,35 @@
+IN CHANNEL X:
+
+user_1>	bot gametime
+bot>	Time for games! Say 'bot games for me' to participate or 'bot games for USERNAME' to indicate another user's participation. Anyone can say 'bot call game vote' at any point to start the next phase.
+bot>	user_1 is down for games!
+user_2> bot games for me
+bot>	user_2 is down for games!
+user_3>	bot games for me
+bot>	user_3 is down for games, but no steam ID is on file for them. Reply with 'bot steamid #########' or 'bot steamid user_3 #########' to set steam ID (for automatic game lookup).
+user_1> bot games for user_4
+user_1> bot games for user_5
+user_1>	bot call game vote
+bot>	Y'all (user_1,user_2,user_3) and maybe (user_4) have the following games in common:
+		1 = game_1
+		2 = game_2
+		3 = game_3
+		4 = game_4
+		
+		Say (either in this channel or as a direct message) 'bot games #,#,..,#' to signify which games you would be willing to play (e.g., 'bot games 1,3,4'). 'bot games username #,#,..,#' works too. When ready for the final result, say 'bot game decision'
+user_1>	bot games 1,3
+bot>	user_1 choices recorded. (1/5)
+user_2> bot games 1,4
+bot>	user_2 choices recorded. (2/5)
+(in direct message to bot: user_3> bot games 1,2)
+bot>	user_3 choices recorded. (3/5) [[NOTE: this should happen in the channel that gametime command was issued]]
+user_1> bot games user_4 1,2,3,4
+bot>	user_4 choices recorded. (4/5)
+user_1> I'm not going to specify anything for user_5, folks. [s]he can deal with our selections.
+user_3> bot game decision
+bot>	YOUR GAMING FATES ARE SOLIDIFIED. Play one of these games:
+		* game_1
+		[[if no games in common for all, list all with the highest vote]]
+		If you still decide on a game from this list, say 'bot choose game' and I'll make the tough call for you.
+user_1> bot choose game
+bot>	Play game_1!
