@@ -23,7 +23,7 @@ module.exports = (robot) ->
 	dataStore = robot.brain.data.gametime = {
 		state: {}
 		games: {}
-		steamUserMap: {}
+		steamUserMap: {} # store this globally - user names in chat system should be unique, right?
 	}
 
 	# regardless of state, start the process in the current channel when someone issues the gametime command
@@ -48,6 +48,23 @@ module.exports = (robot) ->
 		Anyone can say `#{robot.name} shut it down` to extinguish the potential for games.
 		"""
 
+	robot.respond /shut it down/i, (res) ->
+		curRoom = res.message.room
+		dataStore.state[curRoom] = { 
+			phase: "inactive"
+			users: {}
+		}
+
+		robot.logger.debug "Stopping gametime in #{curRoom}. State phase set to #{dataStore.state[curRoom].phase}"
+		robot.logger.debug "Full state: " + JSON.stringify(dataStore,null,2)
+
+		res.send """
+		**This gametime survey is totally cancelled**
+		_much like the Space Olympics_
+		"""
+
+
+	# if the current channel is gathering players, handle it
 	robot.hear /games for (.*)$/i, (msg) ->
 		curRoom = msg.message.room
 		if dataStore.state[curRoom].phase == "gather_players"
@@ -60,8 +77,23 @@ module.exports = (robot) ->
 			if not dataStore.steamUserMap[userToAdd]?
 				msg.reply """
 				I don't know a steam ID for **#{userToAdd}**. 
-				Please reply with `#{robot.name} steamid for #{userToAdd} is STEAMID` so that I can look up available games.
+				Please reply with `steamid for #{userToAdd} is STEAMID` so that I can look up available games.
 				"""
+		else
+			robot.logger.debug "#{curRoom}: heard #{msg.match[0]} but it's not gametime in #{curRoom}"
+
+		robot.logger.debug "Full state: " + JSON.stringify(dataStore,null,2)
+
+	# if a steam ID is supplied while gathering players anywhere, store it (on top of any that might exist, why not?)
+	robot.hear /steamid( for )?(.*?) (is )?(\d+)/, (msg) ->
+		curRoom = msg.message.room
+		if dataStore.state[curRoom].phase == "gather_players"
+			tmpUser = msg.match[2].toLowerCase()
+			tmpSteamID = msg.match[4]
+			dataStore.steamUserMap[tmpUser] = tmpSteamID
+			msg.reply "Got it! Steam ID for #{tmpUser} is set to #{tmpSteamID}"
+			robot.logger.debug "#{curRoom}: heard #{msg.match[0]}. Storing #{tmpUser} -> #{tmpSteamID}"
+			robot.logger.debug "Full state: " + JSON.stringify(dataStore,null,2)
 		else
 			robot.logger.debug "#{curRoom}: heard #{msg.match[0]} but it's not gametime in #{curRoom}"
 
