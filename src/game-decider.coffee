@@ -119,6 +119,7 @@ module.exports = (robot) ->
 				for g in dataStore.state[curRoom].users[tmpPlayer].gamesOwned
 					robot.logger.debug "checking out #{g.appid}"
 					dataStore.games[g.appid] ?= {name: ''}
+					if dataStore.games[g.appid].name == ''
 						robot.logger.debug "doing a lookup for #{g.appid}"
 						steam_api_fetch(robot,'game_info',{appid: g.appid}).then (reponse) ->
 							robot.logger.debug "OH THE THINGS I WAS PROMISED! It's finally HAPPENING! Game name: #{reponse}"
