@@ -75,6 +75,7 @@ module.exports = (robot) ->
 		dataStore.state[curRoom] = { 
 			phase: "gather_players"
 			users: {}
+			common_games: {}
 		}
 
 		robot.logger.debug "Starting gametime in #{curRoom}. State phase set to #{dataStore.state[curRoom].phase}"
@@ -155,6 +156,7 @@ module.exports = (robot) ->
 				robot.logger.debug "dataStore.games: " + JSON.stringify(dataStore.games)
 
 				saneCommonGames = (g for g in commonGames when is_sane_game(dataStore.games[g].name))
+				dataStore.state[curRoom].common_games = saneCommonGames
 				robot.logger.debug "saneCommonGames: " + JSON.stringify(saneCommonGames)
 				gameListMessage = ""
 				for tmpGameID,index in saneCommonGames
@@ -166,6 +168,7 @@ module.exports = (robot) ->
 				-----------------------------
 				Please send me a DM (or type in this channel) a comma separated list of numbers to indicate the games you would be willing to play.
 				"""
+				robot.logger.debug "Full state: " + JSON.stringify(dataStore,null,2)
 
 
 	# if the current channel is gathering players, handle it
