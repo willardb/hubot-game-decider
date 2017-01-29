@@ -19,6 +19,12 @@
 
 C_SEAM_API_KEY = 'APIKEYGOESHERE-DONTCOMMIT'
 
+is_sane_game = (g) ->
+	if (g is null) or (g == undefined) or (g == '') or /(ValveTest|Untitled)App.*/.test(g)
+		return false
+	else
+		return true
+
 steam_api_fetch = (robot, fetch, params) ->
 	endpointMap = {
 		games_owned: 'http://api.steampowered.com/IPlayerService/GetOwnedGames/v0001/'
@@ -51,7 +57,7 @@ steam_api_fetch = (robot, fetch, params) ->
 							'ERROR: UNKNOWN FETCH'
 				)
 			catch e
-				robot.logger.debug "about to reject promise beacuse" + e
+				robot.logger.debug "about to reject promise because" + e
 				reject e
 
 module.exports = (robot) ->
@@ -101,33 +107,65 @@ module.exports = (robot) ->
 		"""
 
 	robot.respond /call game vote/i, (res) ->
+		res.send "Calculating common games..."
 		curRoom = res.message.room
 		dataStore.state[curRoom].phase = 'gather_votes'
 
+		robot.logger.debug "Fetching owned games for all players..."
 		robot.logger.debug "Full state: " + JSON.stringify(dataStore,null,2)
 		# get all steam info right here. cache/use stored game names. query games owned every time.
+		tmpPlayerList = []
+		tmpFetchTasks = []
+		robot.logger.debug "About to start builiding API fetch tasks for owned games"
 		for tmpPlayer, obj of dataStore.state[curRoom].users
-			robot.logger.debug "Processing #{tmpPlayer}"
-			robot.logger.debug "Fetching owned games"
-			steam_api_fetch(robot,'games_owned',{steamid: dataStore.steamUserMap[tmpPlayer]})
-			.then (response) ->
-				robot.logger.debug "OH THE THINGS I WAS PROMISED! It's finally HAPPENING!"
-				dataStore.state[curRoom].users[tmpPlayer].gamesOwned = response
-				robot.logger.debug "Done fetching owned games"
-			.then ->
-				robot.logger.debug "THEN, on to game name lookups.."
-				for g in dataStore.state[curRoom].users[tmpPlayer].gamesOwned
-					robot.logger.debug "checking out #{g.appid}"
-					dataStore.games[g.appid] ?= {name: ''}
-					if dataStore.games[g.appid].name == ''
-						robot.logger.debug "doing a lookup for #{g.appid}"
-						steam_api_fetch(robot,'game_info',{appid: g.appid}).then (reponse) ->
-							robot.logger.debug "OH THE THINGS I WAS PROMISED! It's finally HAPPENING! Game name: #{reponse}"
-							dataStore.games[g.appid].name = reponse
-							robot.logger.debug "dataStore.games[#{g.appid}].name: " + dataStore.games[g.appid].name
-					else
-						robot.logger.debug "not doing a lookup for #{g.appid} beause I already know it as #{dataStore.games[g.appid].name}"
+			robot.logger.debug "Building API fetch for #{tmpPlayer}"
+			tmpPlayerList.push tmpPlayer
+			tmpFetchTasks.push steam_api_fetch(robot,'games_owned',{steamid: dataStore.steamUserMap[tmpPlayer]})
+		robot.logger.debug "Done builiding API fetch tasks for owned games"
 
+		Promise.all(tmpFetchTasks).then (values) ->
+			robot.logger.debug "Promise eval: all api fetch tasks are done."
+			commonGames = []
+			robot.logger.debug "Building list of common games..."
+			for tmpPlayer, index in tmpPlayerList
+				robot.logger.debug "Examining games for #{tmpPlayer}: values[#{index}] #{values[index]}"
+				dataStore.state[curRoom].users[tmpPlayer].gamesOwned = values[index]
+				robot.logger.debug "About to filter.."
+				commonGames = if (commonGames.length == 0) then (g.appid for g in values[index]) else commonGames.filter( (value) ->
+					return (g.appid for g in values[index]).indexOf(value) > -1
+				)
+				robot.logger.debug "Done filtering."
+				robot.logger.debug "Done examining games for #{tmpPlayer}"
+				robot.logger.debug "commonGames: " + JSON.stringify(commonGames)
+				robot.logger.debug "values[index]: " + JSON.stringify(values[index])
+			
+			tmpGameList = []
+			tmpNameLookupTasks = []
+			for g in commonGames
+				robot.logger.debug "common game appid: #{g}"
+				dataStore.games[g] ?= {name: ''}
+				if dataStore.games[g].name == ''
+					tmpGameList.push g
+					tmpNameLookupTasks.push steam_api_fetch(robot,'game_info',{appid: g})
+
+			Promise.all(tmpNameLookupTasks).then (values) ->
+				robot.logger.debug "game name values: " + JSON.stringify(values)
+				for tmpGameAppid, index in tmpGameList
+					dataStore.games[tmpGameAppid].name = values[index]
+				robot.logger.debug "dataStore.games: " + JSON.stringify(dataStore.games)
+
+				saneCommonGames = (g for g in commonGames when is_sane_game(dataStore.games[g].name))
+				robot.logger.debug "saneCommonGames: " + JSON.stringify(saneCommonGames)
+				gameListMessage = ""
+				for tmpGameID,index in saneCommonGames
+					robot.logger.debug "sane game: #{dataStore.games[tmpGameID].name}"
+					gameListMessage += "#{index} : #{dataStore.games[tmpGameID].name}\n"
+				res.send """
+				*Okay, the results are IN! Here are the games we can play:*
+				#{gameListMessage}
+				-----------------------------
+				Please send me a DM (or type in this channel) a comma separated list of numbers to indicate the games you would be willing to play.
+				"""
 
 
 	# if the current channel is gathering players, handle it
